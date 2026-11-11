@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Admin · GT Studio</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="w">
+<section class="card" id="login" style="max-width:420px;margin:60px auto 0">
+ <span class="k">GT Studio</span>
+ <h2 style="margin-top:6px">Painel admin</h2>
+ <form id="lf" novalidate>
+  <div class="fld" style="margin-bottom:12px"><label for="em">E-mail</label><input id="em" type="email" autocomplete="username"></div>
+  <div class="fld" style="margin-bottom:14px"><label for="pw">Senha</label><input id="pw" type="password" autocomplete="current-password"></div>
+  <button class="b" type="submit" style="width:100%">Entrar</button>
+  <p class="st e" id="le" role="alert"></p>
+ </form>
+</main>
+
+<div id="app" hidden>
+ <div class="hd"><div><span class="k">GT Studio</span><h1 style="font-size:26px;margin:2px 0 0">Contratos recebidos</h1></div>
+  <div class="act" style="margin:0"><button class="o" id="csv" type="button">Baixar CSV</button><button class="o" id="out" type="button">Sair</button></div></div>
+ <section class="card">
+  <div class="g" style="grid-template-columns:1fr auto;align-items:end"><div><label for="q">Buscar</label><input id="q" type="search" placeholder="Empresa, CNPJ ou representante"></div><b id="cnt" style="font:700 22px Georgia,serif"></b></div>
+  <div class="tw" style="margin-top:12px"><table><thead><tr><th>Data</th><th>Empresa</th><th>Representante</th><th>CNPJ</th></tr></thead><tbody id="tb"></tbody></table></div>
+  <p class="note" id="empty" hidden>Nenhum contrato recebido ainda.</p>
+  <p class="st e" id="ae" role="alert"></p>
+ </section>
+</div>
+</main>
+<dialog id="dg"><h2>Contrato</h2><dl id="dd"></dl><div class="act" style="justify-content:flex-start"><button class="b" id="bd" type="button">Baixar contrato</button><button class="o" id="cc" type="button">Copiar dados</button><button class="o" id="rm" type="button" style="color:var(--er)">Apagar</button><button class="o" id="cl" type="button">Fechar</button></div><p class="st" id="ds" role="status"></p></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="contrato.js"></script>
+<script src="fx.js"></script>
+<script>
+const G = window.GT || {};
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dt = s => new Date(s).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+const sb = (window.supabase && G.SUPABASE_URL && !/COLE_AQUI/.test(G.SUPABASE_URL)) ? window.supabase.createClient(G.SUPABASE_URL, G.SUPABASE_ANON_KEY) : null;
+let rows = [], cur = null;
+const L = [["Assinado em", r => dt(r.criado_em)], ["Empresa", r => r.empresa], ["CNPJ", r => r.cnpj], ["Representante", r => r.representante], ["CPF", r => r.cpf],
+  ["Endereço", r => r.endereco], ["Contato", r => r.contato], ["Assinatura", r => r.assinatura], ["Pacote", r => r.pacote + " · R$ " + r.valor],
+  ["Entrada", r => "R$ " + r.entrada], ["Restante", r => "R$ " + r.restante + " em " + r.vencimento.split("-").reverse().join("/")]];
+
+function show(on) { $("#login").hidden = on; $("#app").hidden = !on; }
+function draw() {
+  const q = $("#q").value.trim().toLowerCase();
+  const list = rows.filter(r => !q || [r.empresa, r.cnpj, r.representante].join(" ").toLowerCase().includes(q));
+  $("#tb").innerHTML = list.map(r => `<tr data-id="${esc(r.id)}"><td>${esc(dt(r.criado_em))}</td><td>${esc(r.empresa)}</td><td>${esc(r.representante)}</td><td>${esc(r.cnpj)}</td></tr>`).join("");
+  $("#cnt").textContent = list.length;
+  $("#empty").hidden = rows.length > 0;
+}
+async function load() {
+  $("#ae").textContent = "";
+  const { data, error } = await sb.from("contratos").select("*").order("criado_em", { ascending: false });
+  if (error) { $("#ae").textContent = "Não foi possível carregar os contratos."; return; }
+  rows = data || []; draw();
+}
+async function enter() {
+  const { data } = await sb.auth.getSession();
+  if (data && data.session) { show(true); load(); } else show(false);
+}
+if (!sb) { $("#le").textContent = "Configure o config.js com os dados do Supabase."; }
+else { enter(); }
+
+$("#lf").addEventListener("submit", async e => {
+  e.preventDefault(); $("#le").textContent = "";
+  if (!sb) return;
+  const { error } = await sb.auth.signInWithPassword({ email: $("#em").value.trim(), password: $("#pw").value });
+  $("#pw").value = "";
+  if (error) { $("#le").textContent = "E-mail ou senha incorretos."; return; }
+  enter();
+});
+$("#out").addEventListener("click", async () => { await sb.auth.signOut(); rows = []; show(false); });
+$("#q").addEventListener("input", draw);
+$("#tb").addEventListener("click", e => {
+  const tr = e.target.closest("tr"); if (!tr) return;
+  cur = rows.find(r => r.id === tr.dataset.id); if (!cur) return;
+  $("#ds").textContent = ""; $("#dd").innerHTML = L.map(([k, f]) => `<dt>${esc(k)}</dt><dd>${esc(f(cur))}</dd>`).join("");
+  $("#dg").showModal();
+});
+$("#bd").addEventListener("click", () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([CT.doc(cur, G)], { type: "text/html;charset=utf-8" }));
+  a.download = "contrato-" + cur.empresa.replace(/[^\w]+/g, "-").toLowerCase() + ".html"; document.body.appendChild(a); a.click(); a.remove();
+});
+$("#rm").addEventListener("click", async () => {
+  if (!cur || !confirm("Apagar o contrato de " + cur.empresa + "? Isso não pode ser desfeito.")) return;
+  const { data, error } = await sb.from("contratos").delete().eq("id", cur.id).select();
+  if (error || !data || !data.length) { $("#ds").textContent = "Não foi possível apagar."; return; }
+  rows = rows.filter(r => r.id !== cur.id); cur = null; $("#dg").close(); draw();
+});
+$("#cl").addEventListener("click", () => $("#dg").close());
+$("#cc").addEventListener("click", () => {
+  const t = L.map(([k, f]) => k + ": " + f(cur)).join("\n");
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => $("#ds").textContent = "Copiado.", () => $("#ds").textContent = "Não foi possível copiar.");
+});
+$("#csv").addEventListener("click", () => {
+  const cell = v => { v = String(v == null ? "" : v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
+  const head = ["criado_em", "empresa", "cnpj", "representante", "cpf", "endereco", "contato", "assinatura", "pacote", "valor", "entrada", "restante", "vencimento"];
+  const out = [head.join(",")].concat(rows.map(r => head.map(h => cell(r[h])).join(","))).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + out], { type: "text/csv;charset=utf-8" }));
+  a.download = "contratos-gt-studio.csv"; document.body.appendChild(a); a.click(); a.remove();
+});
+</script>
+</body>
+</html>
