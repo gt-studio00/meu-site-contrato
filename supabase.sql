@@ -1,4 +1,4 @@
--- Rode este arquivo inteiro no Supabase: SQL Editor > New query > Run.
+-- Rode este arquivo inteiro no SQL Editor do Supabase (pode rodar mais de uma vez).
 
 create table if not exists public.contratos (
   id uuid primary key default gen_random_uuid(),
@@ -20,12 +20,16 @@ create table if not exists public.contratos (
 
 alter table public.contratos enable row level security;
 
--- A cliente (sem login) só consegue ENVIAR um contrato. Não consegue ler nada.
+drop policy if exists "cliente envia contrato" on public.contratos;
+drop policy if exists "admin le contratos" on public.contratos;
+drop policy if exists "admin apaga contratos" on public.contratos;
+
+-- Qualquer pessoa (logada ou não) pode ENVIAR um contrato, nunca ler.
 create policy "cliente envia contrato" on public.contratos
-  for insert to anon
+  for insert to anon, authenticated
   with check (aceite = true and pacote = 'Completo' and valor = 1000 and entrada = 300 and restante = 700);
 
--- Somente o seu e-mail, logado, consegue ver e apagar.
+-- Só o seu e-mail lê e apaga.
 create policy "admin le contratos" on public.contratos
   for select to authenticated
   using ((auth.jwt() ->> 'email') = 'gabrimot83@gmail.com');
@@ -34,5 +38,7 @@ create policy "admin apaga contratos" on public.contratos
   for delete to authenticated
   using ((auth.jwt() ->> 'email') = 'gabrimot83@gmail.com');
 
-grant insert on public.contratos to anon;
+grant insert on public.contratos to anon, authenticated;
 grant select, delete on public.contratos to authenticated;
+
+notify pgrst, 'reload schema';

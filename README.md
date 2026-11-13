@@ -14,7 +14,7 @@ No painel você abre um contrato e pode baixar, copiar os dados ou apagar.
 3. Em **Authentication > Sign In / Providers > Email**, **desligue "Allow new users to sign up"**. Assim ninguém além de você cria conta.
 4. Em **Authentication > Users > Add user**, crie o usuário com o e-mail gabrimot83@gmail.com e a senha que você quiser (marque "Auto Confirm User"). Quanto mais forte, melhor. A senha fica só no Supabase, nunca no código.
 5. Em **Settings > API**, copie a Project URL e a anon key e cole em `config.js`.
-6. Suba todos os arquivos no GitHub e ligue o GitHub Pages (Settings > Pages > branch main, pasta root).
+6. Suba todos os arquivos no GitHub e publique na Vercel (Add New > Project > Import > Deploy) ou ligue o GitHub Pages.
 
 Endereços: `.../index.html` para a cliente e `.../admin.html` para você.
 

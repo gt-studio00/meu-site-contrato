@@ -93,7 +93,7 @@ $("#clauses").innerHTML = CT.clauses(fmt(venc(new Date())));
 $("#pixk").textContent = G.PIX_CHAVE || "";
 $("#pixf").textContent = "Favorecido: " + (G.PIX_FAVORECIDO || "");
 
-const two = v => /\S+\s+\S+/.test(v.trim());
+const two = v => /\S+\s+\S+/.test(v.trim()) && v.trim().length >= 5;
 const RULES = {
   emp: v => v.trim().length >= 2, cnpj: v => digits(v).length === 14, rep: two,
   cpf: v => digits(v).length === 11, end: v => v.trim().length >= 8, ctt: v => v.trim().length >= 8, sn: two
@@ -134,7 +134,7 @@ $("#sign").addEventListener("submit", async e => {
   const btn = $("#go"); btn.disabled = true; btn.textContent = "Enviando…";
   let error = null;
   try { ({ error } = await sb.from("contratos").insert([row])); } catch (x) { error = x; }
-  if (error) { err.textContent = "Não foi possível enviar agora. Confira sua conexão e tente de novo."; btn.textContent = "Assinar e enviar contrato"; btn.disabled = false; return; }
+  if (error) { err.textContent = "Não foi possível enviar agora. Tente de novo em instantes. Se continuar, mande um print desta tela para o Gabriel. (Detalhe: " + ((error && (error.code || error.message)) || "sem conexão") + (error && error.message && error.code ? " - " + error.message : "") + ")"; btn.textContent = "Assinar e enviar contrato"; btn.disabled = false; return; }
   rec = { ...row, quando: fmt(now) + " às " + now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) };
   $("#venc").textContent = fmt(venc(now));
   keys.forEach(k => $("#" + k).readOnly = true); $("#ok").disabled = true;
