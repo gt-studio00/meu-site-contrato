@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Contrato GT Studio</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="bar" aria-hidden="true"><i id="fill"></i></div>
+<main class="w">
+<header>
+ <span class="k">GT Studio</span>
+ <h1>Contrato de prestação de serviços</h1>
+ <p class="lead">Leia, preencha todos os campos e assine ao final. Leva poucos minutos.</p>
+</header>
+
+<section class="sum" aria-label="Resumo">
+ <div><small>Pacote</small><b>Completo</b></div>
+ <div><small>Valor total</small><b>R$ 1.000,00</b></div>
+ <div class="r"><small>Entrada (30%)</small><b>R$ 300,00</b></div>
+ <div><small>Restante (70%)</small><b>R$ 700,00</b></div>
+</section>
+
+<section class="card">
+ <h2>Partes</h2>
+ <p><b>CONTRATADO:</b> Gabriel Antonio Rocha Mota, responsável pelo GT Studio (fotografia e vídeo), em Arapongas/PR.</p>
+ <p><b>CONTRATANTE:</b> preencha os dados abaixo. Todos os campos são obrigatórios.</p>
+ <div class="g">
+  <div class="fld"><label for="emp">Empresa</label><input id="emp" type="text" value="Dinamic Imóveis" autocomplete="organization"><i class="tk">✓</i></div>
+  <div class="fld"><label for="cnpj">CNPJ</label><input id="cnpj" type="text" inputmode="numeric" placeholder="00.000.000/0000-00"><i class="tk">✓</i></div>
+  <div class="fld"><label for="rep">Representante legal (nome completo)</label><input id="rep" type="text" autocomplete="name"><i class="tk">✓</i></div>
+  <div class="fld"><label for="cpf">CPF do representante</label><input id="cpf" type="text" inputmode="numeric" placeholder="000.000.000-00"><i class="tk">✓</i></div>
+  <div class="fld"><label for="end">Endereço</label><input id="end" type="text" autocomplete="street-address"><i class="tk">✓</i></div>
+  <div class="fld"><label for="ctt">WhatsApp ou e-mail</label><input id="ctt" type="text"><i class="tk">✓</i></div>
+ </div>
+</section>
+
+<section class="card">
+ <h2>Cláusulas</h2>
+ <ol id="clauses"></ol>
+</section>
+
+<section class="card">
+ <h2>Pagamento via Pix</h2>
+ <div class="pix">
+  <div><small>Chave Pix (CPF)</small><code id="pixk"></code><small id="pixf"></small></div>
+  <button class="o" id="cpix" type="button">Copiar chave Pix</button>
+ </div>
+ <p class="st" id="stp" role="status"></p>
+</section>
+
+<form class="card" id="sign" novalidate>
+ <h2>Assinatura</h2>
+ <div class="fld"><label for="sn">Digite seu nome completo para assinar</label><input id="sn" type="text" autocomplete="name"><i class="tk">✓</i></div>
+ <label class="ck"><input id="ok" type="checkbox"><span>Li e concordo com todas as cláusulas deste contrato e confirmo que tenho poderes para contratar em nome da empresa.</span></label>
+ <button class="b" id="go" type="submit" disabled>Assinar e enviar contrato</button>
+ <p class="note" id="hint" style="margin-top:10px">Preencha todos os campos para liberar o botão.</p>
+ <p class="st e" id="err" role="alert"></p>
+</form>
+
+<section class="card done" id="done" hidden aria-live="polite">
+ <svg class="tick" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26"/><path d="M20 33l8 8 16-17"/></svg>
+ <h2>Contrato assinado e enviado</h2>
+ <div class="sg" id="sgn"></div>
+ <p class="note" id="when"></p>
+ <p>O Gabriel já recebeu o seu contrato. Faça o Pix da entrada de R$ 300,00 e guarde uma cópia abaixo.</p>
+ <div class="act">
+  <button class="b" id="dl" type="button">Baixar contrato</button>
+  <button class="o" id="pr" type="button">Salvar em PDF / imprimir</button>
+ </div>
+ <p class="st" id="sts" role="status"></p>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="contrato.js"></script>
+<script src="fx.js"></script>
+<script>
+const G = window.GT || {};
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const digits = v => v.replace(/\D/g, "");
+const pat = (v, p) => { v = digits(v); let o = "", i = 0; for (const ch of p) { if (i >= v.length) break; o += ch === "0" ? v[i++] : ch; } return o; };
+const fmt = d => d.toLocaleDateString("pt-BR");
+const venc = d => new Date(d.getFullYear(), d.getMonth() + 1, 5);
+const iso = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const sb = (window.supabase && G.SUPABASE_URL && !/COLE_AQUI/.test(G.SUPABASE_URL)) ? window.supabase.createClient(G.SUPABASE_URL, G.SUPABASE_ANON_KEY) : null;
+
+$("#clauses").innerHTML = CT.clauses(fmt(venc(new Date())));
+$("#pixk").textContent = G.PIX_CHAVE || "";
+$("#pixf").textContent = "Favorecido: " + (G.PIX_FAVORECIDO || "");
+
+const two = v => /\S+\s+\S+/.test(v.trim()) && v.trim().length >= 5;
+const RULES = {
+  emp: v => v.trim().length >= 2, cnpj: v => digits(v).length === 14, rep: two,
+  cpf: v => digits(v).length === 11, end: v => v.trim().length >= 8, ctt: v => v.trim().length >= 8, sn: two
+};
+const keys = Object.keys(RULES);
+$("#cnpj").addEventListener("input", e => e.target.value = pat(e.target.value, "00.000.000/0000-00"));
+$("#cpf").addEventListener("input", e => e.target.value = pat(e.target.value, "000.000.000-00"));
+
+function check() {
+  let n = 0;
+  keys.forEach(k => { const ok = RULES[k]($("#" + k).value); $("#" + k).closest(".fld").classList.toggle("ok", ok); if (ok) n++; });
+  if ($("#ok").checked) n++;
+  const total = keys.length + 1;
+  $("#fill").style.width = (n / total * 100) + "%";
+  $("#go").disabled = n < total;
+  $("#hint").textContent = n < total ? `Faltam ${total - n} item(ns) para liberar o botão.` : "Tudo certo. Pode assinar.";
+}
+[...keys.map(k => "#" + k), "#ok"].forEach(s => $(s).addEventListener("input", check));
+check();
+
+function copy(t, el) {
+  const ok = () => { el.textContent = "Copiado."; setTimeout(() => el.textContent = "", 2500); };
+  const fb = () => { const a = document.createElement("textarea"); a.value = t; a.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(a); a.select(); let r = false; try { r = document.execCommand("copy"); } catch (e) {} a.remove(); if (r) ok(); else el.textContent = "Não foi possível copiar."; };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, fb); else fb();
+}
+$("#cpix").addEventListener("click", () => copy(G.PIX_COPIA || "", $("#stp")));
+
+let rec = null;
+$("#sign").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("#err"); err.textContent = "";
+  const bad = keys.filter(k => !RULES[k]($("#" + k).value));
+  if (bad.length || !$("#ok").checked) { bad.forEach(k => $("#" + k).closest(".fld").classList.add("bad")); err.textContent = "Preencha todos os campos e aceite o contrato para finalizar."; return; }
+  if (!sb) { err.textContent = "O sistema de envio ainda não foi configurado. Fale com o Gabriel."; return; }
+  const now = new Date();
+  const row = { empresa: $("#emp").value.trim(), cnpj: $("#cnpj").value, representante: $("#rep").value.trim(), cpf: $("#cpf").value,
+    endereco: $("#end").value.trim(), contato: $("#ctt").value.trim(), assinatura: $("#sn").value.trim(), aceite: true, vencimento: iso(venc(now)) };
+  const btn = $("#go"); btn.disabled = true; btn.textContent = "Enviando…";
+  let error = null;
+  try { ({ error } = await sb.from("contratos").insert([row])); } catch (x) { error = x; }
+  if (error) { err.textContent = "Não foi possível enviar agora. Tente de novo em instantes. Se continuar, mande um print desta tela para o Gabriel. (Detalhe: " + ((error && (error.code || error.message)) || "sem conexão") + (error && error.message && error.code ? " - " + error.message : "") + ")"; btn.textContent = "Assinar e enviar contrato"; btn.disabled = false; return; }
+  rec = { ...row, quando: fmt(now) + " às " + now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) };
+  $("#venc").textContent = fmt(venc(now));
+  keys.forEach(k => $("#" + k).readOnly = true); $("#ok").disabled = true;
+  $("#sign").hidden = true;
+  $("#sgn").textContent = row.assinatura; $("#when").textContent = "Assinado em " + rec.quando;
+  const d = $("#done"); d.hidden = false; d.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
+$("#dl").addEventListener("click", () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([CT.doc(rec, G)], { type: "text/html;charset=utf-8" }));
+  a.download = "contrato-gt-studio.html"; document.body.appendChild(a); a.click(); a.remove();
+  $("#sts").textContent = "Contrato baixado.";
+});
+$("#pr").addEventListener("click", () => window.print());
+</script>
+</body>
+</html>
