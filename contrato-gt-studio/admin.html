@@ -13,7 +13,7 @@
  <span class="k">GT Studio</span>
  <h2 style="margin-top:6px">Painel admin</h2>
  <form id="lf" novalidate>
-  <div class="fld" style="margin-bottom:12px"><label for="em">E-mail</label><input id="em" type="email" autocomplete="username"></div>
+  <div class="fld" style="margin-bottom:12px"><label for="em">E-mail</label><input id="em" type="email" autocomplete="username" value="fastx.ytr@gmail.com"></div>
   <div class="fld" style="margin-bottom:14px"><label for="pw">Senha</label><input id="pw" type="password" autocomplete="current-password"></div>
   <button class="b" type="submit" style="width:100%">Entrar</button>
   <p class="st e" id="le" role="alert"></p>
@@ -107,7 +107,11 @@ $("#lf").addEventListener("submit", async e => {
   e.preventDefault(); $("#le").textContent = ""; if (!sb) return;
   const { error } = await sb.auth.signInWithPassword({ email: $("#em").value.trim(), password: $("#pw").value });
   $("#pw").value = "";
-  if (error) { $("#le").textContent = "E-mail ou senha incorretos."; return; }
+  if (error) {
+    const m = String(error.message || "");
+    $("#le").textContent = /not confirmed/i.test(m) ? "Este e-mail ainda não foi confirmado no Supabase." : /invalid login/i.test(m) ? "E-mail ou senha incorretos." : "Não foi possível entrar: " + m;
+    return;
+  }
   enter();
 });
 $("#out").addEventListener("click", async () => { await sb.auth.signOut(); rows = []; show(false); });
